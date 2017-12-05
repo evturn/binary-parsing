@@ -2,7 +2,7 @@ module Parse where
 
 import qualified Data.ByteString.Lazy       as L
 import qualified Data.ByteString.Lazy.Char8 as L8
-import           Data.Char                  (isSpace)
+import           Data.Char                  (chr, isSpace)
 import           Data.Int                   (Int64)
 import           Data.Word                  (Word8)
 
@@ -71,6 +71,9 @@ data ParseState = ParseState
 newtype Parse a = Parse
     { runParse :: ParseState -> Either String (a, ParseState) }
 
+instance Functor Parse where
+  fmap f parser = parser ==> \result -> identity (f result)
+
 identity :: a -> Parse a
 identity a = Parse (\s -> Right (a, s))
 
@@ -110,3 +113,5 @@ p ==> f = Parse pf
     pf initState = case runParse p initState of
                      Left e                   -> Left e
                      Right (result, newState) -> runParse (f result) newState
+
+
