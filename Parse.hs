@@ -131,3 +131,11 @@ parseWhile p = (fmap p <$> peekByte) ==> \mp ->
                if mp == Just True
                then parseByte ==> \b -> (b:) <$> parseWhile p
                else identity []
+
+parseWhile' :: (Word8 -> Bool) -> Parse [Word8]
+parseWhile' p = peekByte ==> \mc ->
+  case mc of
+    Nothing -> identity []
+    Just c
+      | p c -> parseByte ==> \b -> parseWhile' p ==> \bs -> identity (b:bs)
+      | otherwise -> identity []
