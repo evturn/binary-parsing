@@ -103,3 +103,10 @@ putState s = Parse (\_ -> Right ((), s))
 bail :: String -> Parse a
 bail err = Parse $ \s ->
            Left $ "byte offset " ++ show (offset s) ++ ": " ++ err
+
+(==>) :: Parse a -> (a -> Parse b) -> Parse b
+p ==> f = Parse pf
+  where
+    pf initState = case runParse p initState of
+                     Left e                   -> Left e
+                     Right (result, newState) -> runParse (f result) newState
