@@ -3,6 +3,7 @@ module Parse where
 import qualified Data.ByteString.Lazy       as L
 import qualified Data.ByteString.Lazy.Char8 as L8
 import           Data.Char                  (isSpace)
+import           Data.Int                   (Int64)
 
 
 data Greymap = Greymap
@@ -42,6 +43,9 @@ getBytes n str = let count            = fromIntegral n
                      then Nothing
                      else Just both
 
+skipSpace :: (a, L.ByteString) -> Maybe (a, L.ByteString)
+skipSpace (a, s) = Just (a, L8.dropWhile isSpace s)
+
 (>>?) :: Maybe a -> (a -> Maybe b) -> Maybe b
 Nothing >>? _ = Nothing
 Just v  >>? f = f v
@@ -55,5 +59,21 @@ parseP5 s = matchHeader (L8.pack "P5") s      >>?
             skipSpace                         >>?
             \(height, s) -> getNat s          >>?
             \(maxGrey, s) -> getBytes 1 s     >>?
-            (getBytes (width * height) . smd) >>?
+            (getBytes (width * height) . snd) >>?
             \(bitmap, s) -> Just (Greymap width height maxGrey bitmap, s)
+
+data ParseState = ParseState
+    { string :: L.ByteString
+    , offset :: Int64
+    } deriving Show
+
+newtype Parse a = Parse
+    { runParse :: ParseState -> Either String (a, ParseState) }
+
+identity :: a -> Parse a
+identity a = Parse (\s -> Right (a, s))
+
+parse :: Parse a -> L.ByteString -> Either String a
+parse parser initState = case runParse parser (ParseState initState 0) of
+                           Left err          -> Left err
+                           Right (result, _) -> Right result
