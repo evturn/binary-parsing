@@ -161,3 +161,25 @@ skipSpaces = parseWhileWith w2c isSpace ==>& identity ()
 assert :: Bool -> String -> Parse ()
 assert True _    = identity ()
 assert False err = bail err
+
+parseBytes :: Int -> Parse L.ByteString
+parseBytes n = getState ==> \st ->
+               let n'     = fromIntegral n
+                   (h, t) = L.splitAt n' (string st)
+                   st'    = st { offset = offset st + L.length h
+                               , string = t
+                               }
+                in putState st' ==>&
+                   assert (L.length h == n') "end of input" ==>&
+                   identity h
+
+parseRawPGM :: Parse Greymap
+parseRawPGM = parseWhileWith w2c notWhite ==> \header -> skipSpaces ==>&
+              assert (header == "P5") "invalid raw header" ==>&
+              parseNat ==> \width -> skipSpaces ==>&
+              parseNat ==> \height -> skipSpaces ==>&
+              parseNat ==> \maxGrey -> parseByte ==>&
+              parseBytes (width * height) ==> \bitmap ->
+              identity (Greymap width height maxGrey bitmap)
+                where
+                  notWhite = (`notElem` " \r\n\t")
