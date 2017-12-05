@@ -22,13 +22,6 @@ instance Show Greymap where
                               ++ show m
                               ++ "} "
 
-(>>?) :: Maybe a -> (a -> Maybe b) -> Maybe b
-Nothing >>? _ = Nothing
-Just v  >>? f = f v
-
-parseP5 :: L.ByteString -> Maybe (Greymap, L.ByteString)
-parseP5 = undefined
-
 matchHeader :: L.ByteString -> L.ByteString -> Maybe L.ByteString
 matchHeader prefix str
   | prefix `L8.isPrefixOf` str = Just (L8.dropWhile isSpace
@@ -49,3 +42,18 @@ getBytes n str = let count            = fromIntegral n
                      then Nothing
                      else Just both
 
+(>>?) :: Maybe a -> (a -> Maybe b) -> Maybe b
+Nothing >>? _ = Nothing
+Just v  >>? f = f v
+
+parseP5 :: L.ByteString -> Maybe (Greymap, L.ByteString)
+parseP5 s = matchHeader (L8.pack "P5") s      >>?
+            \s -> skipSpace ((), s)           >>?
+            (getNat . snd)                    >>?
+            skipSpace                         >>?
+            \(width, s) -> getNat s           >>?
+            skipSpace                         >>?
+            \(height, s) -> getNat s          >>?
+            \(maxGrey, s) -> getBytes 1 s     >>?
+            (getBytes (width * height) . smd) >>?
+            \(bitmap, s) -> Just (Greymap width height maxGrey bitmap, s)
