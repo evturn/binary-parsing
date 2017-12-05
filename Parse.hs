@@ -114,4 +114,20 @@ p ==> f = Parse pf
                      Left e                   -> Left e
                      Right (result, newState) -> runParse (f result) newState
 
+w2c :: Word8 -> Char
+w2c = chr . fromIntegral
 
+parseChar :: Parse Char
+parseChar = w2c <$> parseByte
+
+peekByte :: Parse (Maybe Word8)
+peekByte = (fmap fst . L.uncons . string) <$> getState
+
+peekChar :: Parse (Maybe Char)
+peekChar = fmap w2c <$> peekByte
+
+parseWhile :: (Word8 -> Bool) -> Parse [Word8]
+parseWhile p = (fmap p <$> peekByte) ==> \mp ->
+               if mp == Just True
+               then parseByte ==> \b -> (b:) <$> parseWhile p
+               else identity []
