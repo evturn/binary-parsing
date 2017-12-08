@@ -71,11 +71,27 @@ data ParseState = ParseState
 newtype Parse a = Parse
     { runParse :: ParseState -> Either String (a, ParseState) }
 
+identity :: a -> Parse a
+identity a = Parse (\s -> Right (a, s))
+
+(==>) :: Parse a -> (a -> Parse b) -> Parse b
+p ==> f = Parse pf
+  where
+    pf initState = case runParse p initState of
+                     Left e                   -> Left e
+                     Right (result, newState) -> runParse (f result) newState
+
+bail :: String -> Parse a
+bail err = Parse $ \s ->
+           Left $ "byte offset " ++ show (offset s) ++ ": " ++ err
+
 instance Functor Parse where
   fmap f parser = parser ==> \result -> identity (f result)
 
-identity :: a -> Parse a
-identity a = Parse (\s -> Right (a, s))
+instance Monad Parse where
+  return = identity
+  (>>=) = (==>)
+  fail = bail
 
 parse :: Parse a -> L.ByteString -> Either String a
 parse parser initState = case runParse parser (ParseState initState 0) of
@@ -102,17 +118,6 @@ getState = Parse (\s -> Right (s, s))
 
 putState :: ParseState -> Parse ()
 putState s = Parse (\_ -> Right ((), s))
-
-bail :: String -> Parse a
-bail err = Parse $ \s ->
-           Left $ "byte offset " ++ show (offset s) ++ ": " ++ err
-
-(==>) :: Parse a -> (a -> Parse b) -> Parse b
-p ==> f = Parse pf
-  where
-    pf initState = case runParse p initState of
-                     Left e                   -> Left e
-                     Right (result, newState) -> runParse (f result) newState
 
 w2c :: Word8 -> Char
 w2c = chr . fromIntegral
