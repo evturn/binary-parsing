@@ -5,6 +5,8 @@ module Logger
     , record
     ) where
 
+import           Control.Monad
+
 type Log = [String]
 
 newtype Logger a = Logger
@@ -38,3 +40,14 @@ globToRegex' ('[':c:cs) =
   charClass cs >>= \ds ->
   return ("[" ++ c : ds)
 globToRegex' ('[':_) = fail "unterminated character class"
+globToRegex' (c:cs) = liftM2 (++) (escape c) (globToRegex' cs)
+
+charClass (']':cs) = (']':) `liftM` globToRegex' cs
+charClass (c:cs)   = (c:) `liftM` charClass cs
+
+escape :: Char -> Logger String
+escape c
+    | c `elem` regexChars = record "escape" >> return ['\\', c]
+    | otherwise           = return [c]
+  where
+    regexChars = "\\+()^$.{}]|"
