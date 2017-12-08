@@ -18,8 +18,18 @@ runLogger = execLogger
 record :: String -> Logger ()
 record s = Logger ((), [s])
 
+instance Functor Logger where
+  fmap f x = let (a, s) = execLogger x
+              in Logger (f a, s)
+
+instance Applicative Logger where
+  pure a = Logger (a, [])
+  f <*> g = let (h, l) = execLogger f
+                (x, y) = execLogger g
+             in Logger (h x, y)
+
 instance Monad Logger where
-  return a = Logger (a, [])
+  return = pure
   m >>= k = let (a, w) = execLogger m
                 n      = k a
                 (b, x) = execLogger n
