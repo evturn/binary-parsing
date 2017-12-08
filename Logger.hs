@@ -7,6 +7,9 @@ module Logger
 
 type Log = [String]
 
+newtype Logger a = Logger
+    { execLogger :: (a, Log) }
+
 runLogger :: Logger a -> (a, Log)
 runLogger = undefined
 
@@ -14,7 +17,7 @@ record :: String -> Logger ()
 record = undefined
 
 globToRegex :: String -> Logger String
-globToRegex = undefined
+globToRegex cs = globToRegex' cs >>= \ds -> return ('^':ds)
 
 globToRegex' :: String -> Logger String
 globToRegex' "" = return "$"
@@ -24,7 +27,7 @@ globToRegex' ('?':cs) =
   return ('.':ds)
 globToRegex' ('*':cs) =
   record "kleene star" >>
-  globToRegex' xs >>= \ds ->
+  globToRegex' cs >>= \ds ->
   return (".*" ++ ds)
 globToRegex' ('[':'!':c:cs) =
   record "character class, negative" >>
