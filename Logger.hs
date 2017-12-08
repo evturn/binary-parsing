@@ -13,10 +13,10 @@ newtype Logger a = Logger
     { execLogger :: (a, Log) }
 
 runLogger :: Logger a -> (a, Log)
-runLogger = undefined
+runLogger = execLogger
 
 record :: String -> Logger ()
-record = undefined
+record s = Logger ((), [s])
 
 globToRegex :: String -> Logger String
 globToRegex cs = globToRegex' cs >>= \ds -> return ('^':ds)
